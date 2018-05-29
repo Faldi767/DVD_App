@@ -116,7 +116,7 @@
                 echo "0 results";
             }
         }
-        function loadcategory() {
+        function loadcategory($title = "") {
             if ($this->conn->connect_error) {
                 die("Connection failed: " . $this->conn->connect_error);
             } 
@@ -130,12 +130,101 @@
                 echo '<div class="panel-body">';
                 echo '<ul class="nav nav-pills nav-stacked category-menu">';
                 while($row = $result->fetch_assoc()) {
-                    echo '<li><a href="#">'.$row["nama_genre"].'</a></li>';
+                    if(isset($_GET["id_genre"])) {
+                        echo '<li class="'.($row["id_genre"] == $_GET["id_genre"] ? "active" : "").'"><a href="index?page='.$title.'&id_genre='.$row["id_genre"].'">'.$row["nama_genre"].'</a></li>';
+                    } else {
+                        echo '<li><a href="index?page='.$title.'&id_genre='.$row["id_genre"].'">'.$row["nama_genre"].'</a></li>';
+                    }
                 }
                 echo '</ul></div></div></div>';
             } else {
                 echo '0 results';
             }   
+        }
+        function loadshop($id_genre = 0 ,$shoppage = 1) {
+            if ($this->conn->connect_error) {
+                die("Connection failed: " . $this->conn->connect_error);
+            } 
+            
+            $no_of_records_per_page = 3;
+            $offset = ($shoppage-1) * $no_of_records_per_page;
+            if($id_genre != 0) {
+                $total_pages_sql = "SELECT COUNT(*) FROM tbl_film WHERE id_genre='$id_genre'";
+            } else {
+                $total_pages_sql = "SELECT COUNT(*) FROM tbl_film";
+            }
+            $result = $this->conn->query($total_pages_sql);
+            $total_rows = mysqli_fetch_array($result)[0];
+            $total_pages = ceil($total_rows / $no_of_records_per_page);
+            if($id_genre != 0) {
+                $sql = "SELECT * FROM tbl_film WHERE id_genre='$id_genre' LIMIT $offset, $no_of_records_per_page";
+            } else {
+                $sql = "SELECT * FROM tbl_film LIMIT $offset, $no_of_records_per_page";
+            }
+            $result = $this->conn->query($sql);
+            
+            if ($result->num_rows > 0) { ?>
+                <div class="col-md-9">
+                <div class="box">
+                    <h1>Shop</h1>
+                    <p>Lorem ipsum dolor sit amet consectetur adipisicing elit. Tempora ab commodi at ea voluptatum odio aliquid, ex dolores ipsa accusantium vitae qui sint doloribus fugiat harum sunt atque itaque! Reiciendis!</p>    
+                </div>
+                <div class="row">
+                <?php while($row = $result->fetch_assoc()) { ?>
+                    <div class="col-md-4 col-sm-6 center-responsive">
+                        <div class="product">
+                            <center>
+                            <a href="">
+                                <img src="admin/product_images/<?php echo $row["img_film"]; ?>" class="img-responsive">
+                            </a>
+                            </center>
+                            <div class="text">
+                                <h3>
+                                    <a href=""><?php echo $row["nama"]; ?></a>
+                                </h3>
+                                <p class="price">
+                                    Rp.<?php echo $row["harga"]; ?>
+                                </p>
+                                <p class="buttons">
+                                    <a href="details.php" class="btn btn-default">View Details</a>
+                                    <a href="details.php" class="btn btn-primary"><i class="fa fa-shopping-cart"></i>Add to Cart</a>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                <?php } ?>
+                </div>
+                <center>
+                <ul class="pagination">
+                    <li><a href="">First Page</a></li>
+                    <?php 
+                        $i = 1;
+                        while($i <= $total_pages) { 
+                            if($id_genre == 0) { ?>
+                            
+                            <li><a href="index?page=shop&shoppage=<?php echo $i; ?>"><?php echo $i; ?></a></li>
+                            <?php } else { ?>
+                                <li><a href="index?page=shop&id_genre=<?php echo $id_genre; ?>&shoppage=<?php echo $i; ?>"><?php echo $i; ?></a></li>
+                            <?php }
+                                $i++;
+                        } ?>
+                    <li><a href="">Last Page</a></li>
+                </ul>
+            </center>
+        </div>
+    </div>
+</div>
+            <?php } else { ?>
+                <div class="col-md-9">
+                <div class="box">
+                    <h1>Shop</h1>
+                    <p>Lorem ipsum dolor sit amet consectetur adipisicing elit. Tempora ab commodi at ea voluptatum odio aliquid, ex dolores ipsa accusantium vitae qui sint doloribus fugiat harum sunt atque itaque! Reiciendis!</p>    
+                </div>
+                <div class="row">
+                </div>
+    </div>
+</div>
+            <?php }   
         }
     }
     class main extends database {
@@ -214,8 +303,16 @@
         function shop() {
             parent::__construct();
             $this->breadcrumb("Shop");
-            parent::loadcategory();
-            include("shoppage.php");
+            parent::loadcategory("shop");
+            if(isset($_GET["shoppage"]) && isset($_GET["id_genre"])) {
+                $this->loadshop($_GET["id_genre"], $_GET["shoppage"]);
+            } else if(isset($_GET["shoppage"]) && !isset($_GET["id_genre"])) {
+                $this->loadshop(0, $_GET["shoppage"]);
+            } else if(isset($_GET["id_genre"]) && !isset($_GET["shoppage"])) {
+                $this->loadshop($_GET["id_genre"], 1);
+            } else {
+                $this->loadshop();
+            }
         }
         function account() {
             $this->breadcrumb("My Account");
@@ -226,7 +323,9 @@
             include("cartpage.php");
         }
         function contact() {
+            parent::__construct();
             $this->breadcrumb("Contact Us");
+            parent::loadcategory("contact");
             include("contactpage.php");
         }
         function registerpage() {
